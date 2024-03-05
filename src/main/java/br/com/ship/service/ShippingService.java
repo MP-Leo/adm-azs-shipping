@@ -8,8 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
@@ -42,14 +41,30 @@ public class ShippingService {
 
         Criteria searchCriteria = Criteria.where("attributes.$values").is(searchText);
 
+        ProjectionOperation projectOperation = Aggregation.project("id", "attributes")
+                .andExpression("objectToArray(attributes)").as("attributesArray");
+
+        UnwindOperation unwindOperation = Aggregation.unwind("attributesArray");
+
+        ProjectionOperation addFieldsOperation = Aggregation.project()
+                .andInclude("id", "attributes", "attributesArray")
+                .and(ConvertOperators.ToString.toString("$attributesArray.v")).as("stringValue");
+
+        Criteria criteria = Criteria.where("stringValue").is(searchText);
+        MatchOperation matchOperation = Aggregation.match(criteria);
+
+        SkipOperation skipOperation = Aggregation.skip(pageable.getOffset());
+        LimitOperation limitOperation = Aggregation.limit(pageable.getPageSize());
+
         Aggregation aggregation = Aggregation.newAggregation(
-                Aggregation.project("id", "attributes")
-                        .andExpression("objectToArray(attributes)").as("attributesArray"),
-                Aggregation.unwind("attributesArray"),
-                Aggregation.match(Criteria.where("attributesArray.v").is(searchText)),
-                Aggregation.skip(pageable.getOffset()),
-                Aggregation.limit(pageable.getPageSize())
+                projectOperation,
+                unwindOperation,
+                addFieldsOperation,
+                matchOperation,
+                skipOperation,
+                limitOperation
         );
+
 
         AggregationResults<Shipping> results = mongoTemplate.aggregate(aggregation, "shipping", Shipping.class);
         List<Shipping> shippingList = results.getMappedResults();
