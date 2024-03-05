@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:5.0
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: rootuser
+      MONGO_INITDB_ROOT_PASSWORD: rootpass
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - mongodb_network
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://rootuser:rootpass@mongo:27017/ship
+      - SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE=admin
+    networks:
+      - mongodb_network
+
+volumes:
+  mongo-data:
+
+networks:
+  mongodb_network:
+    name: mongodb_network
