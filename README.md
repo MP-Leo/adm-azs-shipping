@@ -55,7 +55,7 @@ The application supports the following endpoints for managing Shippings:
 
 ### Get Shipping By Any Attribute Value
 
-- **GET** `/api/shipping/{attributeValue}`
+- **GET** `/api/shipping//attributes/{param}`
 
 ### Update Shipping Attributes
 
